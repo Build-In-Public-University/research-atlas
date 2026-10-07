@@ -134,8 +134,9 @@ def build_views() -> None:
     families = parse_families()
     claims = read_jsonl(CATALOG / "claims.jsonl")
     artifacts = read_jsonl(CATALOG / "artifacts.jsonl")
+    surfaces = read_jsonl(CATALOG / "repository-surfaces.jsonl")
     manifests = sorted(MANIFESTS.glob("*.json"))
-    overview = ["# Research Atlas Overview", "", f"Generated: {datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')}", "", "This page is generated from the catalog and source import manifests.", "", "## Counts", "", f"- Families: {len(families)}", f"- Claims: {len(claims)}", f"- Artifacts: {len(artifacts)}", f"- Imported source repositories: {len(manifests)}", "", "## Families", ""]
+    overview = ["# Research Atlas Overview", "", f"Generated: {datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')}", "", "This page is generated from the catalog and source import manifests.", "", "## Counts", "", f"- Families: {len(families)}", f"- Claims: {len(claims)}", f"- Artifacts: {len(artifacts)}", f"- Proposed repository surfaces: {len(surfaces)}", f"- Imported source repositories: {len(manifests)}", "", "## Families", ""]
     for family in families:
         family_id = family["id"]
         overview.append(f"- [{family['title']}](families/{family_id}.md) — `{family.get('status', 'unspecified')}`; evidence ceiling `{family.get('evidence_ceiling', 'unspecified')}`")
@@ -163,6 +164,11 @@ def build_views() -> None:
         manifest = json.loads(manifest_path.read_text())
         source_lines.append(f"| [{manifest['repository']}]({manifest['source_url']}) | `{manifest['source_commit'][:12]}` | {manifest['path_count']} | {manifest['fetched_at']} |")
     (GENERATED / "source-inventory.md").write_text("\n".join(source_lines) + "\n")
+    source_urls = {json.loads(path.read_text())["repository"]: json.loads(path.read_text())["source_url"] for path in manifests}
+    surface_lines = ["# Proposed Repository Surfaces", "", "These mappings are candidate classifications derived from public repository metadata. They are not claim validation and should be promoted only after reading the source artifacts.", "", "| Repository | Candidate family | Confidence | Surface types |", "|---|---|---|---|"]
+    for surface in surfaces:
+        surface_lines.append(f"| [{surface['repository']}]({source_urls.get(surface['repository'], '')}) | `{surface['candidate_family']}` | `{surface['confidence']}` | {', '.join(surface['surface_types'])} |")
+    (GENERATED / "repository-surfaces.md").write_text("\n".join(surface_lines) + "\n")
     print(f"built {len(families)} family pages and overview.md")
 
 
@@ -175,6 +181,7 @@ def validate() -> None:
         raise ValueError("duplicate family id")
     claims = read_jsonl(CATALOG / "claims.jsonl")
     artifacts = read_jsonl(CATALOG / "artifacts.jsonl")
+    surfaces = read_jsonl(CATALOG / "repository-surfaces.jsonl")
     for row in claims:
         required = {"id", "family", "type", "status", "source", "evidence_boundary"}
         missing = required - row.keys()
@@ -187,6 +194,13 @@ def validate() -> None:
             raise ValueError(f"artifact {row.get('id', '?')} missing required fields")
         if row["family"] not in family_ids:
             raise ValueError(f"artifact {row['id']} references unknown family {row['family']}")
+    for row in surfaces:
+        required = {"repository", "candidate_family", "surface_types", "confidence", "mapping_status", "rationale"}
+        missing = required - row.keys()
+        if missing:
+            raise ValueError(f"surface {row.get('repository', '?')} missing {sorted(missing)}")
+        if row["repository"] not in source_ids:
+            raise ValueError(f"surface references unknown repository {row['repository']}")
     for manifest_path in MANIFESTS.glob("*.json"):
         manifest = json.loads(manifest_path.read_text())
         if manifest.get("repository") not in source_ids:
