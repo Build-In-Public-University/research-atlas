@@ -121,7 +121,7 @@ def source_repo_id(source_url: str) -> str:
     return f"{parts[0]}/{parts[1]}"
 
 
-def drift_check() -> int:
+def drift_check(check_only: bool = False) -> int:
     """Fetch exact source paths at imported commits and classify source drift."""
     manifests = {json.loads(path.read_text())["repository"]: json.loads(path.read_text()) for path in MANIFESTS.glob("*.json")}
     records = read_jsonl(EXTRACTIONS)
@@ -154,9 +154,12 @@ def drift_check() -> int:
             except RuntimeError as exc:
                 item.update({"source_commit": commit, "status": "fetch_error", "error": str(exc), "observed_at": now})
         output.append(item)
-    EXTRACTIONS.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in output))
+    if not check_only:
+        EXTRACTIONS.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in output))
     counts = {status: sum(row.get("status") == status for row in output) for status in ("baseline", "unchanged", "changed", "source_deleted", "fetch_error", "missing_manifest")}
     print(f"drift: {len(output)} extracted sources; " + ", ".join(f"{key}={value}" for key, value in counts.items() if value))
+    if check_only and any(row.get("status") in {"changed", "source_deleted", "fetch_error", "missing_manifest"} for row in output):
+        return 2
     return len(output)
 
 
@@ -300,11 +303,14 @@ def validate() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("command", choices=("import", "drift", "build", "validate", "all"))
+    parser.add_argument("--check", action="store_true", help="for drift, report changes without writing the extraction ledger")
     args = parser.parse_args()
     if args.command in ("import", "all"):
         import_repositories()
     if args.command in ("drift", "all"):
-        drift_check()
+        result = drift_check(check_only=args.check)
+        if args.check and result == 2:
+            return 2
     if args.command in ("build", "all"):
         build_views()
     if args.command in ("validate", "all"):
