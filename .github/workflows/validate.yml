@@ -17,4 +17,7 @@ jobs:
         with:
           python-version: '3.x'
       - name: Validate catalog and generated views
-        run: python3 tools/atlas.py validate
+        run: |
+          python3 -m py_compile tools/atlas.py
+          python3 tools/atlas.py validate
+          git diff --check

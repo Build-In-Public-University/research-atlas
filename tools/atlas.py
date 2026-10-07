@@ -7,17 +7,20 @@ import json
 import os
 import re
 import sys
+from hashlib import sha256
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from urllib.parse import quote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCES = ROOT / "sources/repositories.yaml"
 MANIFESTS = ROOT / "sources/import-manifests"
 CATALOG = ROOT / "catalog"
 GENERATED = ROOT / "generated"
+EXTRACTIONS = CATALOG / "extractions.jsonl"
 
 
 def parse_source_manifest(path: Path = SOURCES) -> list[dict[str, str]]:
@@ -55,6 +58,19 @@ def github_json(url: str) -> Any:
             return json.load(response)
     except (HTTPError, URLError) as exc:
         raise RuntimeError(f"GitHub request failed for {url}: {exc}") from exc
+
+
+def raw_text(url: str) -> str:
+    request = Request(url, headers={"User-Agent": "research-atlas/0.1"})
+    try:
+        with urlopen(request, timeout=30) as response:
+            return response.read().decode("utf-8")
+    except HTTPError as exc:
+        if exc.code == 404:
+            raise FileNotFoundError(url) from exc
+        raise RuntimeError(f"raw source request failed for {url}: {exc}") from exc
+    except URLError as exc:
+        raise RuntimeError(f"raw source request failed for {url}: {exc}") from exc
 
 
 def safe_name(repo_id: str) -> str:
@@ -95,6 +111,53 @@ def import_repositories() -> int:
         print(f"imported {repo_id} @ {commit['sha'][:12]} ({len(entries)} paths)")
         count += 1
     return count
+
+
+def source_repo_id(source_url: str) -> str:
+    parsed = urlparse(source_url)
+    parts = [part for part in parsed.path.split("/") if part]
+    if len(parts) < 2:
+        raise ValueError(f"cannot derive repository from {source_url}")
+    return f"{parts[0]}/{parts[1]}"
+
+
+def drift_check() -> int:
+    """Fetch exact source paths at imported commits and classify source drift."""
+    manifests = {json.loads(path.read_text())["repository"]: json.loads(path.read_text()) for path in MANIFESTS.glob("*.json")}
+    records = read_jsonl(EXTRACTIONS)
+    previous = {(row["repository"], row["source_path"]): row for row in records}
+    candidates = {}
+    for catalog_file in (CATALOG / "claims.jsonl", CATALOG / "artifacts.jsonl"):
+        for row in read_jsonl(catalog_file):
+            if row.get("source_path") and row.get("source"):
+                repo = source_repo_id(row["source"])
+                candidates[(repo, row["source_path"])] = {"repository": repo, "source_path": row["source_path"], "source_url": row["source"]}
+    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    output = []
+    for key in sorted(candidates):
+        item = candidates[key]
+        manifest = manifests.get(item["repository"])
+        if not manifest:
+            item.update({"status": "missing_manifest", "observed_at": now})
+        else:
+            commit = manifest["source_commit"]
+            owner, repo = item["repository"].split("/", 1)
+            raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{commit}/{quote(item['source_path'], safe='/') }"
+            try:
+                content = raw_text(raw_url).encode("utf-8")
+                digest = sha256(content).hexdigest()
+                prior = previous.get(key, {})
+                status = "baseline" if not prior else ("unchanged" if prior.get("sha256") == digest else "changed")
+                item.update({"source_commit": commit, "sha256": digest, "bytes": len(content), "status": status, "observed_at": now})
+            except FileNotFoundError:
+                item.update({"source_commit": commit, "status": "source_deleted", "observed_at": now})
+            except RuntimeError as exc:
+                item.update({"source_commit": commit, "status": "fetch_error", "error": str(exc), "observed_at": now})
+        output.append(item)
+    EXTRACTIONS.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in output))
+    counts = {status: sum(row.get("status") == status for row in output) for status in ("baseline", "unchanged", "changed", "source_deleted", "fetch_error", "missing_manifest")}
+    print(f"drift: {len(output)} extracted sources; " + ", ".join(f"{key}={value}" for key, value in counts.items() if value))
+    return len(output)
 
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -169,6 +232,22 @@ def build_views() -> None:
     for surface in surfaces:
         surface_lines.append(f"| [{surface['repository']}]({source_urls.get(surface['repository'], '')}) | `{surface['candidate_family']}` | `{surface['confidence']}` | {', '.join(surface['surface_types'])} |")
     (GENERATED / "repository-surfaces.md").write_text("\n".join(surface_lines) + "\n")
+    extractions = read_jsonl(EXTRACTIONS)
+    corrections = read_jsonl(CATALOG / "corrections.jsonl")
+    digest_lines = ["# Research Atlas Release Digest", "", f"Generated: {datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')}", "", "This is a release-candidate digest. It reports source state and editorial boundaries; it does not promote claims automatically.", "", "## Source extraction state", ""]
+    if extractions:
+        for row in extractions:
+            digest_lines.append(f"- `{row['repository']}:{row['source_path']}` — `{row.get('status', 'unknown')}` at `{row.get('source_commit', 'unknown')[:12]}`")
+    else:
+        digest_lines.append("No source extractions recorded yet. Run `python3 tools/atlas.py drift`.")
+    digest_lines += ["", "## Corrections and preserved boundaries", ""]
+    if corrections:
+        for row in corrections:
+            digest_lines.append(f"- `{row.get('id', 'unknown')}` — {row.get('summary', '')} (`{row.get('status', 'unresolved')}`)")
+    else:
+        digest_lines.append("No correction records indexed yet.")
+    digest_lines += ["", "## Promotion rule", "", "Only source-read observations with verified pointers may enter the catalog. Changed or deleted source files require review before a claim status can advance."]
+    (GENERATED / "release-digest.md").write_text("\n".join(digest_lines) + "\n")
     print(f"built {len(families)} family pages and overview.md")
 
 
@@ -182,6 +261,7 @@ def validate() -> None:
     claims = read_jsonl(CATALOG / "claims.jsonl")
     artifacts = read_jsonl(CATALOG / "artifacts.jsonl")
     surfaces = read_jsonl(CATALOG / "repository-surfaces.jsonl")
+    extractions = read_jsonl(EXTRACTIONS)
     for row in claims:
         required = {"id", "family", "type", "status", "source", "evidence_boundary"}
         missing = required - row.keys()
@@ -201,6 +281,12 @@ def validate() -> None:
             raise ValueError(f"surface {row.get('repository', '?')} missing {sorted(missing)}")
         if row["repository"] not in source_ids:
             raise ValueError(f"surface references unknown repository {row['repository']}")
+    for row in extractions:
+        required = {"repository", "source_path", "status", "observed_at"}
+        if not required <= row.keys():
+            raise ValueError(f"extraction {row.get('repository', '?')}:{row.get('source_path', '?')} missing {sorted(required - row.keys())}")
+        if row["repository"] not in source_ids:
+            raise ValueError(f"extraction references unknown repository {row['repository']}")
     for manifest_path in MANIFESTS.glob("*.json"):
         manifest = json.loads(manifest_path.read_text())
         if manifest.get("repository") not in source_ids:
@@ -213,10 +299,12 @@ def validate() -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("import", "build", "validate", "all"))
+    parser.add_argument("command", choices=("import", "drift", "build", "validate", "all"))
     args = parser.parse_args()
     if args.command in ("import", "all"):
         import_repositories()
+    if args.command in ("drift", "all"):
+        drift_check()
     if args.command in ("build", "all"):
         build_views()
     if args.command in ("validate", "all"):
