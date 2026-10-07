@@ -1,0 +1,22 @@
+version: 0.1
+repositories:
+  - id: leo-guinan/the-return-of-magic-causal-compression
+    url: https://github.com/leo-guinan/the-return-of-magic-causal-compression
+    owner: leo-guinan
+    role: source
+    import_status: manually_indexed
+  - id: leo-guinan/shape-of-trust-paper
+    url: https://github.com/leo-guinan/shape-of-trust-paper
+    owner: leo-guinan
+    role: source
+    import_status: manually_indexed
+  - id: Build-In-Public-University/research
+    url: https://github.com/Build-In-Public-University/research
+    owner: Build-In-Public-University
+    role: source
+    import_status: manually_indexed
+  - id: openai/math
+    url: https://github.com/openai/math
+    owner: openai
+    role: external_catalogue_model
+    import_status: reference_only

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research Atlas Claim",
+  "type": "object",
+  "required": ["id", "family", "type", "status", "source", "evidence_boundary"],
+  "properties": {
+    "id": {"type": "string"},
+    "family": {"type": "string"},
+    "type": {"type": "string"},
+    "status": {"type": "string"},
+    "wording": {"type": "string"},
+    "source": {"type": "string", "format": "uri"},
+    "falsifier_recorded": {"type": "boolean"},
+    "evidence_boundary": {"type": "string"}
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Research Atlas Family",
+  "type": "object",
+  "required": ["id", "title", "source_repo", "status", "evidence_ceiling"],
+  "properties": {
+    "id": {"type": "string"},
+    "title": {"type": "string"},
+    "source_repo": {"type": "string", "format": "uri"},
+    "status": {"type": "string"},
+    "evidence_ceiling": {"type": "string"},
+    "notes": {"type": "string"}
+  }
+}

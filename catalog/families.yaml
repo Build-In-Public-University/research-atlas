@@ -1,0 +1,26 @@
+version: "0.1"
+families:
+  - id: return-of-magic-causal-compression
+    title: "The Return of Magic: Causal Compression in Adaptive Systems"
+    source_repo: "https://github.com/leo-guinan/the-return-of-magic-causal-compression"
+    status: public_repository
+    evidence_ceiling: bounded_synthetic_validation
+    notes: "Theory/protocol paper with a claim ledger, research boundary, public graph, and bounded instrument-level validation."
+  - id: shape-of-trust
+    title: "The Shape of Trust"
+    source_repo: "https://github.com/leo-guinan/shape-of-trust-paper"
+    status: public_working_paper
+    evidence_ceiling: source_lineage_and_preprint_assets
+    notes: "Working paper with source lineage, concept blocks, bridge probes, processing receipts, and preprint packages."
+  - id: complexity-inflation
+    title: "Complexity Inflation: The Hidden Economics of Scaling"
+    source_repo: "https://github.com/Build-In-Public-University/research"
+    status: public_working_research
+    evidence_ceiling: structured_manuscript_draft
+    notes: "Versioned chapter manuscript with bibliography and a separate research-error-checking workflow."
+  - id: research-error-checks
+    title: "Research Error Checks"
+    source_repo: "https://github.com/Build-In-Public-University/research"
+    status: public_protocol_draft
+    evidence_ceiling: proposed_review_protocol
+    notes: "Public proposal for collecting papers, running competing analyses, locating trouble areas, and routing error classes to specialized evaluators."
