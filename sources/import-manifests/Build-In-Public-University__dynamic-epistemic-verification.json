@@ -1,0 +1,24 @@
+{
+  "blob_count": 14,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:32:32Z",
+  "path_count": 18,
+  "repository": "Build-In-Public-University/dynamic-epistemic-verification",
+  "schema_version": "0.1",
+  "source_commit": "dcc033dbe0486e78d65acfce39575e6b928105f8",
+  "source_role": "source",
+  "source_url": "https://github.com/Build-In-Public-University/dynamic-epistemic-verification",
+  "top_level_paths": [
+    ".gitignore",
+    "README.md",
+    "VALIDATION.md",
+    "docs",
+    "paper",
+    "references.bib",
+    "requirements-dev.txt",
+    "scripts"
+  ],
+  "tree_count": 4,
+  "tree_sha": "dcc033dbe0486e78d65acfce39575e6b928105f8",
+  "tree_truncated": false
+}

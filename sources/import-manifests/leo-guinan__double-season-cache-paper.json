@@ -1,0 +1,27 @@
+{
+  "blob_count": 25,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:32:32Z",
+  "path_count": 33,
+  "repository": "leo-guinan/double-season-cache-paper",
+  "schema_version": "0.1",
+  "source_commit": "e4fa8be7b2831529a9c614beadcba3b65c7b4696",
+  "source_role": "source",
+  "source_url": "https://github.com/leo-guinan/double-season-cache-paper",
+  "top_level_paths": [
+    ".github",
+    ".gitignore",
+    "README.md",
+    "artifacts",
+    "paper",
+    "pyproject.toml",
+    "scripts",
+    "src",
+    "tests",
+    "uv.lock",
+    "zenodo.json"
+  ],
+  "tree_count": 8,
+  "tree_sha": "e4fa8be7b2831529a9c614beadcba3b65c7b4696",
+  "tree_truncated": false
+}

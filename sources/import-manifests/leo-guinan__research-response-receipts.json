@@ -1,0 +1,23 @@
+{
+  "blob_count": 10,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:32:32Z",
+  "path_count": 17,
+  "repository": "leo-guinan/research-response-receipts",
+  "schema_version": "0.1",
+  "source_commit": "edec3ad0a01e42e6055908e6d57ec29f2133cd51",
+  "source_role": "source",
+  "source_url": "https://github.com/leo-guinan/research-response-receipts",
+  "top_level_paths": [
+    ".github",
+    ".gitignore",
+    "README.md",
+    "data",
+    "docs",
+    "scripts",
+    "tests"
+  ],
+  "tree_count": 7,
+  "tree_sha": "edec3ad0a01e42e6055908e6d57ec29f2133cd51",
+  "tree_truncated": false
+}

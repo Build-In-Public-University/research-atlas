@@ -1,0 +1,19 @@
+{
+  "blob_count": 5,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:32:32Z",
+  "path_count": 7,
+  "repository": "Build-In-Public-University/transaction-costs-of-understanding",
+  "schema_version": "0.1",
+  "source_commit": "97ca9b645b59b0ee32452c776d50428bb9061df5",
+  "source_role": "source",
+  "source_url": "https://github.com/Build-In-Public-University/transaction-costs-of-understanding",
+  "top_level_paths": [
+    "README.md",
+    "docs",
+    "paper"
+  ],
+  "tree_count": 2,
+  "tree_sha": "97ca9b645b59b0ee32452c776d50428bb9061df5",
+  "tree_truncated": false
+}

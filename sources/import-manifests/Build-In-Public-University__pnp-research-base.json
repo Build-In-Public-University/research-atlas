@@ -1,0 +1,29 @@
+{
+  "blob_count": 487,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:32:32Z",
+  "path_count": 514,
+  "repository": "Build-In-Public-University/pnp-research-base",
+  "schema_version": "0.1",
+  "source_commit": "c4f6b5e73ab9f80a35bc4bbde556a867fefeba09",
+  "source_role": "source",
+  "source_url": "https://github.com/Build-In-Public-University/pnp-research-base",
+  "top_level_paths": [
+    ".gitattributes",
+    ".gitignore",
+    "ARCHIVE-BOUNDARY.md",
+    "README.md",
+    "RIGHTS.md",
+    "conversation",
+    "experiment",
+    "manifest.json",
+    "manifest.sha256",
+    "scripts",
+    "sources",
+    "tests",
+    "verification"
+  ],
+  "tree_count": 27,
+  "tree_sha": "c4f6b5e73ab9f80a35bc4bbde556a867fefeba09",
+  "tree_truncated": false
+}

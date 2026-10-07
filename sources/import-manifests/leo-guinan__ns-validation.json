@@ -1,0 +1,27 @@
+{
+  "blob_count": 329,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:32:32Z",
+  "path_count": 409,
+  "repository": "leo-guinan/ns-validation",
+  "schema_version": "0.1",
+  "source_commit": "58dd0f6f615b19d2fd1d8e5b6278ab099b1b6f20",
+  "source_role": "source",
+  "source_url": "https://github.com/leo-guinan/ns-validation",
+  "top_level_paths": [
+    ".gitignore",
+    "README.md",
+    "data",
+    "docs",
+    "experiments",
+    "pyproject.toml",
+    "schemas",
+    "scripts",
+    "src",
+    "tests",
+    "verify.py"
+  ],
+  "tree_count": 80,
+  "tree_sha": "58dd0f6f615b19d2fd1d8e5b6278ab099b1b6f20",
+  "tree_truncated": false
+}

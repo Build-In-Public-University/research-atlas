@@ -1,0 +1,25 @@
+{
+  "blob_count": 12,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:32:32Z",
+  "path_count": 18,
+  "repository": "leo-guinan/double-season-cache-meta",
+  "schema_version": "0.1",
+  "source_commit": "624401dc559797f0ef89997f6a56fc2d25b66844",
+  "source_role": "source",
+  "source_url": "https://github.com/leo-guinan/double-season-cache-meta",
+  "top_level_paths": [
+    ".github",
+    ".gitignore",
+    "README.md",
+    "artifacts",
+    "chat-logs-sanitized",
+    "paper",
+    "pyproject.toml",
+    "scripts",
+    "zenodo.json"
+  ],
+  "tree_count": 6,
+  "tree_sha": "624401dc559797f0ef89997f6a56fc2d25b66844",
+  "tree_truncated": false
+}

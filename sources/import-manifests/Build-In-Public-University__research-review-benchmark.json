@@ -1,0 +1,28 @@
+{
+  "blob_count": 14,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:32:32Z",
+  "path_count": 19,
+  "repository": "Build-In-Public-University/research-review-benchmark",
+  "schema_version": "0.1",
+  "source_commit": "04485065728068652cf868063c705d66e7865ef7",
+  "source_role": "source",
+  "source_url": "https://github.com/Build-In-Public-University/research-review-benchmark",
+  "top_level_paths": [
+    ".env.example",
+    ".github",
+    ".gitignore",
+    "CONTRIBUTING.md",
+    "LICENSE",
+    "README.md",
+    "SCHEMA.md",
+    "SECURITY.md",
+    "benchmarks",
+    "pyproject.toml",
+    "repo_benchmark_agent.py",
+    "tests"
+  ],
+  "tree_count": 5,
+  "tree_sha": "04485065728068652cf868063c705d66e7865ef7",
+  "tree_truncated": false
+}
