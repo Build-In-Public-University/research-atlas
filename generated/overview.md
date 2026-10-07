@@ -1,6 +1,6 @@
 # Research Atlas Overview
 
-Generated: 2026-10-07T11:30:15Z
+Generated: 2026-10-07T11:35:36Z
 
 This page is generated from the catalog and source import manifests.
 
@@ -9,7 +9,7 @@ This page is generated from the catalog and source import manifests.
 - Families: 4
 - Claims: 3
 - Artifacts: 6
-- Imported source repositories: 3
+- Imported source repositories: 14
 
 ## Families
 

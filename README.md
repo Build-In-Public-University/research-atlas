@@ -35,5 +35,5 @@ Import manifests record the source commit, tree SHA, branch, fetch time, and pat
 - `catalog/` — families, claims, artifacts, releases, and corrections
 - `schemas/` — machine-readable record contracts
 - `sources/` — source repository manifest and import receipts
-- `generated/` — future derived views
+- `generated/` — generated overview, source inventory, and family pages
 - `tools/` — future import and validation tools

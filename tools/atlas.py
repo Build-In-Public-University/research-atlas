@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone
@@ -44,7 +45,11 @@ def parse_source_manifest(path: Path = SOURCES) -> list[dict[str, str]]:
 
 
 def github_json(url: str) -> Any:
-    request = Request(url, headers={"Accept": "application/vnd.github+json", "User-Agent": "research-atlas/0.1"})
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": "research-atlas/0.1"}
+    token = os.environ.get("GITHUB_TOKEN")
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    request = Request(url, headers=headers)
     try:
         with urlopen(request, timeout=30) as response:
             return json.load(response)
@@ -153,6 +158,11 @@ def build_views() -> None:
         (GENERATED / "families").mkdir(parents=True, exist_ok=True)
         (GENERATED / "families" / f"{family_id}.md").write_text("\n".join(body) + "\n")
     (GENERATED / "overview.md").write_text("\n".join(overview) + "\n")
+    source_lines = ["# Imported Source Inventory", "", "Generated from `sources/import-manifests/`. These are repository-state receipts, not claim-validation receipts.", "", "| Repository | Commit | Paths | Fetched |", "|---|---|---:|---|"]
+    for manifest_path in manifests:
+        manifest = json.loads(manifest_path.read_text())
+        source_lines.append(f"| [{manifest['repository']}]({manifest['source_url']}) | `{manifest['source_commit'][:12]}` | {manifest['path_count']} | {manifest['fetched_at']} |")
+    (GENERATED / "source-inventory.md").write_text("\n".join(source_lines) + "\n")
     print(f"built {len(families)} family pages and overview.md")
 
 

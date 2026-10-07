@@ -15,6 +15,61 @@ repositories:
     owner: Build-In-Public-University
     role: source
     import_status: manually_indexed
+  - id: leo-guinan/bend-verdict-investigation
+    url: https://github.com/leo-guinan/bend-verdict-investigation
+    owner: leo-guinan
+    role: source
+    import_status: queued
+  - id: leo-guinan/ns-validation
+    url: https://github.com/leo-guinan/ns-validation
+    owner: leo-guinan
+    role: source
+    import_status: queued
+  - id: leo-guinan/double-season-cache-paper
+    url: https://github.com/leo-guinan/double-season-cache-paper
+    owner: leo-guinan
+    role: source
+    import_status: queued
+  - id: leo-guinan/double-season-cache-meta
+    url: https://github.com/leo-guinan/double-season-cache-meta
+    owner: leo-guinan
+    role: source
+    import_status: queued
+  - id: leo-guinan/efmw-equation-review
+    url: https://github.com/leo-guinan/efmw-equation-review
+    owner: leo-guinan
+    role: source
+    import_status: queued
+  - id: leo-guinan/research-response-receipts
+    url: https://github.com/leo-guinan/research-response-receipts
+    owner: leo-guinan
+    role: source
+    import_status: queued
+  - id: leo-guinan/PhD
+    url: https://github.com/leo-guinan/PhD
+    owner: leo-guinan
+    role: source
+    import_status: queued
+  - id: Build-In-Public-University/pnp-research-base
+    url: https://github.com/Build-In-Public-University/pnp-research-base
+    owner: Build-In-Public-University
+    role: source
+    import_status: queued
+  - id: Build-In-Public-University/dynamic-epistemic-verification
+    url: https://github.com/Build-In-Public-University/dynamic-epistemic-verification
+    owner: Build-In-Public-University
+    role: source
+    import_status: queued
+  - id: Build-In-Public-University/transaction-costs-of-understanding
+    url: https://github.com/Build-In-Public-University/transaction-costs-of-understanding
+    owner: Build-In-Public-University
+    role: source
+    import_status: queued
+  - id: Build-In-Public-University/research-review-benchmark
+    url: https://github.com/Build-In-Public-University/research-review-benchmark
+    owner: Build-In-Public-University
+    role: source
+    import_status: queued
   - id: openai/math
     url: https://github.com/openai/math
     owner: openai
