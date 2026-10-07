@@ -17,7 +17,18 @@ A compressed entry must preserve what was observed, what was inferred, the curre
 
 ## Status
 
-This is the initial atlas scaffold. The first catalog entries are source-reconciled pointers, not a claim that all indexed work has been independently revalidated.
+The atlas imports public source-repository metadata, preserves source commit and tree SHAs, builds deterministic family pages, and validates catalog references. The first generated snapshot covers three source repositories; OpenAI/math remains a reference-only catalogue model.
+
+## Commands
+
+```bash
+python3 tools/atlas.py import    # fetch public GitHub metadata and tree manifests
+python3 tools/atlas.py build     # build generated overview and family pages
+python3 tools/atlas.py validate  # validate catalog references and import receipts
+python3 tools/atlas.py all       # run all three stages
+```
+
+Import manifests record the source commit, tree SHA, branch, fetch time, and paths observed. They are receipts of repository state, not proof that the indexed claims are true.
 
 ## Layout
 

@@ -1,0 +1,25 @@
+{
+  "blob_count": 16,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:30:12Z",
+  "path_count": 24,
+  "repository": "leo-guinan/the-return-of-magic-causal-compression",
+  "schema_version": "0.1",
+  "source_commit": "ad488b8be120009a05f02c48918c64351afaf7f9",
+  "source_role": "source",
+  "source_url": "https://github.com/leo-guinan/the-return-of-magic-causal-compression",
+  "top_level_paths": [
+    ".github",
+    ".gitignore",
+    "README.md",
+    "claims",
+    "docs",
+    "graph",
+    "paper",
+    "scripts",
+    "zenodo.json"
+  ],
+  "tree_count": 8,
+  "tree_sha": "ad488b8be120009a05f02c48918c64351afaf7f9",
+  "tree_truncated": false
+}

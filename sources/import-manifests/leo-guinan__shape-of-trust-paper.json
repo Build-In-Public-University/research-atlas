@@ -1,0 +1,29 @@
+{
+  "blob_count": 264,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:30:12Z",
+  "path_count": 300,
+  "repository": "leo-guinan/shape-of-trust-paper",
+  "schema_version": "0.1",
+  "source_commit": "906143234343f5b72b8c5de59556ad09d17b97bd",
+  "source_role": "source",
+  "source_url": "https://github.com/leo-guinan/shape-of-trust-paper",
+  "top_level_paths": [
+    ".wrangler",
+    "README.md",
+    "The Shape of Trust_ Designing Information Systems That Hold the Door Open.revised.md",
+    "artifacts",
+    "assets",
+    "knowledge-base",
+    "meme_thread_launch_pack.md",
+    "preprint",
+    "proofeditor_ai_collaborator_defense.md",
+    "proofeditor_ai_collaborator_defense_bodega_cat.md",
+    "publish",
+    "thread_synthesis.md",
+    "tools"
+  ],
+  "tree_count": 36,
+  "tree_sha": "906143234343f5b72b8c5de59556ad09d17b97bd",
+  "tree_truncated": false
+}

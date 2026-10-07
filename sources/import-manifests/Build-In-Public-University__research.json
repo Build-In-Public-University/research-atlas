@@ -1,0 +1,28 @@
+{
+  "blob_count": 35,
+  "default_branch": "main",
+  "fetched_at": "2026-10-07T11:30:12Z",
+  "path_count": 43,
+  "repository": "Build-In-Public-University/research",
+  "schema_version": "0.1",
+  "source_commit": "3987f044656eab8c21dc6f22358c08172a909aa4",
+  "source_role": "source",
+  "source_url": "https://github.com/Build-In-Public-University/research",
+  "top_level_paths": [
+    ".github",
+    ".gitignore",
+    ".obsidian",
+    "Complexity Inflation: The Hidden Economics of Scaling",
+    "README.md",
+    "Research Error Checks",
+    "Step 2 - Create competing analysis models.md",
+    "content",
+    "index.html",
+    "script.js",
+    "styles.css",
+    "team"
+  ],
+  "tree_count": 8,
+  "tree_sha": "3987f044656eab8c21dc6f22358c08172a909aa4",
+  "tree_truncated": false
+}
