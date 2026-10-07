@@ -10,7 +10,9 @@ README-supported observation: the equation catalogue is classified as a specific
 ## Claims
 
 - `efmw-review/specification-boundary` — `readme_observed`: The EFMW equation catalogue is classified as a specification fragment rather than a reproducible mathematical model because definitions, dimensions, baselines, and causal protocols remain incomplete.
+- `efmw-review/item-102-protocol` — `protocol_observed`: The review specifies a ten-step falsification protocol for item 102: freeze event and horizon, baseline, chronological splits, equal tuning, calibration thresholds, metrics, repeated environments, controls, preregistration, and raw prediction publication.
 
 ## Artifacts
 
 - [efmw-review/readme](https://github.com/leo-guinan/efmw-equation-review) — `readme_observed` (`README.md`)
+- [efmw-review/review](https://github.com/leo-guinan/efmw-equation-review) — `report_observed` (`review.md`)

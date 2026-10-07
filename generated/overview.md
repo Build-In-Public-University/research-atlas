@@ -1,14 +1,14 @@
 # Research Atlas Overview
 
-Generated: 2026-10-07T13:15:17Z
+Generated: 2026-10-07T13:17:35Z
 
 This page is generated from the catalog and source import manifests.
 
 ## Counts
 
 - Families: 15
-- Claims: 14
-- Artifacts: 17
+- Claims: 24
+- Artifacts: 27
 - Proposed repository surfaces: 11
 - Imported source repositories: 14
 
