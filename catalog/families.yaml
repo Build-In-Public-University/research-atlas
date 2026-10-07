@@ -24,3 +24,69 @@ families:
     status: public_protocol_draft
     evidence_ceiling: proposed_review_protocol
     notes: "Public proposal for collecting papers, running competing analyses, locating trouble areas, and routing error classes to specialized evaluators."
+  - id: proof-kernel-verification
+    title: "Proof-Kernel Verification"
+    source_repo: "https://github.com/leo-guinan/bend-verdict-investigation"
+    status: candidate_family
+    evidence_ceiling: bounded_pinned_release_investigation
+    notes: "README-supported observation: one pinned Bend release was investigated; no bounty-grade falsehood was found, and one checker synchronization bug was reported."
+  - id: navier-stokes-validation
+    title: "Navier–Stokes Validation Architecture"
+    source_repo: "https://github.com/leo-guinan/ns-validation"
+    status: candidate_family
+    evidence_ceiling: unvalidated_extracted_ledger
+    notes: "README-supported observation: the project defines a conservative extraction pipeline and explicitly does not claim to solve Navier–Stokes."
+  - id: cache-compression
+    title: "Double-Season Cache Compression"
+    source_repo: "https://github.com/leo-guinan/double-season-cache-paper"
+    status: candidate_family
+    evidence_ceiling: deterministic_synthetic_benchmark
+    notes: "README-supported observation: the paper reports deterministic synthetic mechanics and a held-out routing boundary."
+  - id: equation-review-and-falsification
+    title: "EFMW Equation Review and Falsification"
+    source_repo: "https://github.com/leo-guinan/efmw-equation-review"
+    status: candidate_family
+    evidence_ceiling: specification_audit_and_proposed_test
+    notes: "README-supported observation: the equation catalogue is classified as a specification fragment, with missing definitions and baseline protocols identified."
+  - id: research-response-calibration
+    title: "Research Response Calibration"
+    source_repo: "https://github.com/leo-guinan/research-response-receipts"
+    status: candidate_family
+    evidence_ceiling: public_operational_ledger
+    notes: "README-supported observation: response receipts separate artifact timing, cost, tests, readback, failures, and external reality."
+  - id: memetic-economics-notebook
+    title: "Memetic Economics Notebook"
+    source_repo: "https://github.com/leo-guinan/PhD"
+    status: candidate_family
+    evidence_ceiling: open_research_program_statement
+    notes: "README-supported observation: the notebook frames value of information, communication patterns, memetic economics, and human-centered financial models as research directions."
+  - id: pnp-research
+    title: "P/NP Research: Representations and Evidence"
+    source_repo: "https://github.com/Build-In-Public-University/pnp-research-base"
+    status: candidate_family
+    evidence_ceiling: bounded_synthetic_experiments
+    notes: "README-supported observation: the repository separates prose, executable mechanisms, synthetic experiments, and mathematical results."
+  - id: dynamic-epistemic-verification
+    title: "Dynamic Epistemic Verification"
+    source_repo: "https://github.com/Build-In-Public-University/dynamic-epistemic-verification"
+    status: candidate_family
+    evidence_ceiling: draft_protocol_and_synthetic_fixture
+    notes: "README-supported observation: the paper draft has a claim ledger, proof-of-search primitive, validation script, and no empirical claim without a frozen run receipt."
+  - id: transaction-costs-of-understanding
+    title: "Transaction Costs of Understanding"
+    source_repo: "https://github.com/Build-In-Public-University/transaction-costs-of-understanding"
+    status: candidate_family
+    evidence_ceiling: prospective_theory_and_simulation_design
+    notes: "README-supported observation: the computational model is specified but not yet run, and the field study is prospective."
+  - id: research-review-benchmark
+    title: "Research Review Benchmark"
+    source_repo: "https://github.com/Build-In-Public-University/research-review-benchmark"
+    status: candidate_family
+    evidence_ceiling: calibrated_repository_audit
+    notes: "README-supported observation: the tool performs a reproducible first-pass audit with adversarial verification and exact token/cost receipts; it is not peer review."
+  - id: cache-compression-process
+    title: "Continuous Research Publication Pipeline"
+    source_repo: "https://github.com/leo-guinan/double-season-cache-meta"
+    status: candidate_family
+    evidence_ceiling: process_artifact
+    notes: "README-supported observation: CRPP defines a loop from research state through receipts, claim ledger, process ledger, generated paper, verification, and release artifact."
