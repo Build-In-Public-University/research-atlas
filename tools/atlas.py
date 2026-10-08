@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 from hashlib import sha256
 from datetime import datetime, timezone
@@ -155,7 +156,7 @@ def update_review_queue(output: list[dict], now: str, path: Path = REVIEW_QUEUE)
         if event:
             event.update({**row, "last_seen": now, "last_observed_status": row["status"]})
         else:
-            queue.append({**row, "event_id": event_id, "first_seen": now, "last_seen": now, "last_observed_status": row["status"], "required_action": "inspect_source_and_update_claim", "resolved": False, "resolution": None, "resolution_outcome": None, "resolution_target": None})
+            queue.append({**row, "event_id": event_id, "first_seen": now, "last_seen": now, "last_observed_status": row["status"], "required_action": "inspect_source_and_update_claim", "resolved": False, "resolution": None, "resolution_outcome": None, "resolution_target": None, "catalog_commit": None, "changed_paths": []})
     for event in queue:
         if event.get("event_id") not in current_ids:
             event["last_observed_status"] = "not_currently_flagged"
@@ -343,7 +344,7 @@ def validate() -> None:
         if row["repository"] not in source_ids:
             raise ValueError(f"extraction references unknown repository {row['repository']}")
     for row in review_queue:
-        required = {"event_id", "repository", "source_path", "status", "first_seen", "last_seen", "last_observed_status", "required_action", "resolved", "resolution", "resolution_outcome", "resolution_target"}
+        required = {"event_id", "repository", "source_path", "status", "first_seen", "last_seen", "last_observed_status", "required_action", "resolved", "resolution", "resolution_outcome", "resolution_target", "catalog_commit", "changed_paths"}
         if not required <= row.keys():
             raise ValueError(f"review queue record missing {sorted(required - row.keys())}")
         if row["status"] not in REVIEW_STATUSES:
@@ -357,6 +358,8 @@ def validate() -> None:
                 raise ValueError(f"resolved review event {row['event_id']} lacks a target for {outcome}")
             if outcome == "no_catalog_change" and target:
                 raise ValueError(f"no_catalog_change event {row['event_id']} cannot have a target")
+            if outcome in {"claim_update", "correction_record"} and (not row.get("catalog_commit") or not row.get("changed_paths")):
+                raise ValueError(f"resolved review event {row['event_id']} lacks a catalog commit receipt")
     for manifest_path in MANIFESTS.glob("*.json"):
         manifest = json.loads(manifest_path.read_text())
         if manifest.get("repository") not in source_ids:
@@ -376,26 +379,41 @@ def review_list() -> int:
     return 0
 
 
-def resolve_review(event_id: str, resolution: str, outcome: str, target: str | None, resolver: str) -> int:
+def resolve_review(event_id: str, resolution: str, outcome: str, target: str | None, catalog_commit: str | None, changed_paths: list[str], resolver: str) -> int:
     if outcome not in REVIEW_OUTCOMES:
         raise ValueError(f"invalid review outcome {outcome}; choose one of {sorted(REVIEW_OUTCOMES)}")
+    required_path = None
     if outcome == "claim_update":
+        required_path = "catalog/claims.jsonl"
         valid_targets = {row.get("id") for row in read_jsonl(CATALOG / "claims.jsonl")}
         if target not in valid_targets:
             raise ValueError(f"claim_update target must be an existing claim ID, got {target}")
     elif outcome == "correction_record":
+        required_path = "catalog/corrections.jsonl"
         valid_targets = {row.get("id") for row in read_jsonl(CATALOG / "corrections.jsonl")}
         if target not in valid_targets:
             raise ValueError(f"correction_record target must be an existing correction ID, got {target}")
     elif target:
         raise ValueError("no_catalog_change cannot specify a target")
+    if outcome in {"claim_update", "correction_record"}:
+        if not catalog_commit or required_path not in changed_paths:
+            raise ValueError(f"{outcome} requires --catalog-commit and --changed-path {required_path}")
+        try:
+            subprocess.run(["git", "cat-file", "-e", f"{catalog_commit}^{{commit}}"], cwd=ROOT, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            committed_paths = subprocess.run(["git", "diff-tree", "--no-commit-id", "--name-only", "-r", catalog_commit], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
+        except (subprocess.CalledProcessError, OSError) as exc:
+            raise ValueError(f"catalog commit is not present locally: {catalog_commit}") from exc
+        if required_path not in committed_paths:
+            raise ValueError(f"catalog commit {catalog_commit} does not change {required_path}")
+    elif catalog_commit or changed_paths:
+        raise ValueError("no_catalog_change cannot specify catalog commit or changed paths")
     rows = read_jsonl(REVIEW_QUEUE)
     for row in rows:
         if row.get("event_id") == event_id:
             if row.get("resolved"):
                 raise ValueError(f"review event {event_id} is already resolved")
             now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-            row.update({"resolved": True, "resolution": resolution, "resolution_outcome": outcome, "resolution_target": target, "resolved_by": resolver, "resolved_at": now})
+            row.update({"resolved": True, "resolution": resolution, "resolution_outcome": outcome, "resolution_target": target, "catalog_commit": catalog_commit, "changed_paths": changed_paths, "resolved_by": resolver, "resolved_at": now})
             REVIEW_QUEUE.write_text("".join(json.dumps(item, sort_keys=True) + "\n" for item in rows))
             print(f"resolved review event {event_id}")
             return 0
@@ -410,6 +428,8 @@ def main() -> int:
     parser.add_argument("--resolution", help="resolution explanation for resolve")
     parser.add_argument("--outcome", choices=sorted(REVIEW_OUTCOMES), help="required catalog consequence for resolve")
     parser.add_argument("--target", help="existing claim or correction ID required by the selected outcome")
+    parser.add_argument("--catalog-commit", help="local commit proving the catalog mutation")
+    parser.add_argument("--changed-path", action="append", default=[], help="catalog path changed by the resolution; repeatable")
     parser.add_argument("--resolver", default=os.environ.get("USER", "unknown"), help="resolver identity for resolve")
     args = parser.parse_args()
     if args.command in ("import", "all"):
@@ -423,7 +443,7 @@ def main() -> int:
     if args.command == "resolve":
         if not args.event_id or not args.resolution or not args.outcome:
             parser.error("resolve requires EVENT_ID, --resolution, and --outcome")
-        return resolve_review(args.event_id, args.resolution, args.outcome, args.target, args.resolver)
+        return resolve_review(args.event_id, args.resolution, args.outcome, args.target, args.catalog_commit, args.changed_path, args.resolver)
     if args.command in ("build", "all"):
         build_views()
     if args.command in ("validate", "all"):
