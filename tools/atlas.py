@@ -308,6 +308,23 @@ def build_views() -> None:
         digest_lines.append("No correction records indexed yet.")
     digest_lines += ["", "## Promotion rule", "", "Only source-read observations with verified pointers may enter the catalog. Changed or deleted source files require review before a claim status can advance."]
     (GENERATED / "release-digest.md").write_text("\n".join(digest_lines) + "\n")
+    review_queue = read_jsonl(REVIEW_QUEUE)
+    review_lines = ["# Research Review Report", "", "This report lists source-drift events requiring or having received explicit human resolution.", "", "## Unresolved events", ""]
+    unresolved = [row for row in review_queue if not row.get("resolved", False)]
+    if unresolved:
+        for row in unresolved:
+            review_lines.append(f"- `{row['event_id']}` — `{row['repository']}:{row['source_path']}`; status `{row['status']}`; action `{row['required_action']}`")
+    else:
+        review_lines.append("No unresolved review events.")
+    review_lines += ["", "## Resolved events", ""]
+    resolved = [row for row in review_queue if row.get("resolved", False)]
+    if resolved:
+        for row in resolved:
+            receipt = row.get("catalog_commit") or "none"
+            review_lines.append(f"- `{row['event_id']}` — outcome `{row.get('resolution_outcome')}`; target `{row.get('resolution_target') or 'none'}`; receipt `{receipt}`")
+    else:
+        review_lines.append("No resolved review events.")
+    (GENERATED / "review-report.md").write_text("\n".join(review_lines) + "\n")
     print(f"built {len(families)} family pages and overview.md")
 
 
