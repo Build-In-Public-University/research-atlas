@@ -139,6 +139,29 @@ def review_event_id(row: dict) -> str:
     return sha256(material.encode("utf-8")).hexdigest()[:16]
 
 
+def update_review_queue(output: list[dict], now: str, path: Path = REVIEW_QUEUE) -> list[dict]:
+    """Merge current flags into the append-only review ledger."""
+    prior_queue = {row["event_id"]: row for row in read_jsonl(path) if row.get("event_id")}
+    queue = list(prior_queue.values())
+    queue_by_id = {row["event_id"]: row for row in queue}
+    current_ids = set()
+    for row in output:
+        if row.get("status") not in REVIEW_STATUSES:
+            continue
+        event_id = review_event_id(row)
+        current_ids.add(event_id)
+        event = queue_by_id.get(event_id)
+        if event:
+            event.update({**row, "last_seen": now, "last_observed_status": row["status"]})
+        else:
+            queue.append({**row, "event_id": event_id, "first_seen": now, "last_seen": now, "last_observed_status": row["status"], "required_action": "inspect_source_and_update_claim", "resolved": False, "resolution": None})
+    for event in queue:
+        if event.get("event_id") not in current_ids:
+            event["last_observed_status"] = "not_currently_flagged"
+    path.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in queue))
+    return queue
+
+
 def drift_check(check_only: bool = False) -> int:
     """Compare indexed paths at the live default branch with the recorded baseline."""
     manifests = {json.loads(path.read_text())["repository"]: json.loads(path.read_text()) for path in MANIFESTS.glob("*.json")}
@@ -181,22 +204,7 @@ def drift_check(check_only: bool = False) -> int:
         output.append(item)
     if not check_only:
         EXTRACTIONS.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in output))
-        prior_queue = {row["event_id"]: row for row in read_jsonl(REVIEW_QUEUE) if row.get("event_id")}
-        queue = list(prior_queue.values())
-        queue_by_id = {row["event_id"]: row for row in queue}
-        for row in output:
-            if row.get("status") in REVIEW_STATUSES:
-                event_id = review_event_id(row)
-                event = queue_by_id.get(event_id)
-                if event:
-                    event.update({**row, "last_seen": now, "last_observed_status": row["status"]})
-                else:
-                    event = {**row, "event_id": event_id, "first_seen": now, "last_seen": now, "last_observed_status": row["status"], "required_action": "inspect_source_and_update_claim", "resolved": False, "resolution": None}
-                    queue.append(event)
-        for event in queue:
-            if event.get("event_id") in queue_by_id and not any(review_event_id(row) == event.get("event_id") for row in output if row.get("status") in REVIEW_STATUSES):
-                event["last_observed_status"] = "not_currently_flagged"
-        REVIEW_QUEUE.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in queue))
+        update_review_queue(output, now)
     statuses = ("baseline", "unchanged", "repository_advanced_source_unchanged", "source_changed", "source_deleted", "fetch_error", "missing_manifest")
     counts = {status: sum(row.get("status") == status for row in output) for status in statuses}
     print(f"drift: {len(output)} extracted sources; " + ", ".join(f"{key}={value}" for key, value in counts.items() if value))

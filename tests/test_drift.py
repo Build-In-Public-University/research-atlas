@@ -1,3 +1,4 @@
+import json
 import sys
 import tempfile
 import unittest
@@ -28,6 +29,31 @@ class DriftClassificationTests(unittest.TestCase):
     def test_same_commit_with_changed_file_requires_review(self):
         prior = {"id": "existing"}
         self.assertEqual(atlas.classify_drift(prior, "c1", "h2", "c1", "h1"), "source_changed")
+
+    def test_review_event_persists_until_explicit_resolution(self):
+        row = {"repository": "fixture/repo", "source_path": "REPORT.md", "baseline_commit": "c1", "current_commit": "c2", "status": "source_changed", "current_sha256": "h2", "baseline_sha256": "h1"}
+        with tempfile.TemporaryDirectory() as directory:
+            queue_path = Path(directory) / "review-queue.jsonl"
+            first = atlas.update_review_queue([row], "2026-01-01T00:00:00Z", queue_path)
+            event_id = first[0]["event_id"]
+            second = atlas.update_review_queue([row], "2026-01-02T00:00:00Z", queue_path)
+            self.assertEqual(second[0]["event_id"], event_id)
+            self.assertEqual(second[0]["first_seen"], "2026-01-01T00:00:00Z")
+            self.assertEqual(second[0]["last_seen"], "2026-01-02T00:00:00Z")
+            restored = {**row, "status": "unchanged"}
+            third = atlas.update_review_queue([restored], "2026-01-03T00:00:00Z", queue_path)
+            self.assertFalse(third[0]["resolved"])
+            self.assertEqual(third[0]["last_observed_status"], "not_currently_flagged")
+            original_path = atlas.REVIEW_QUEUE
+            atlas.REVIEW_QUEUE = queue_path
+            try:
+                atlas.resolve_review(event_id, "Reviewed source change; no claim update required.", "fixture-reviewer")
+            finally:
+                atlas.REVIEW_QUEUE = original_path
+            resolved = json.loads(queue_path.read_text().splitlines()[0])
+            self.assertTrue(resolved["resolved"])
+            self.assertEqual(resolved["resolution"], "Reviewed source change; no claim update required.")
+            self.assertEqual(resolved["resolved_by"], "fixture-reviewer")
 
     def test_local_git_fixture_advances_then_changes(self):
         with tempfile.TemporaryDirectory() as directory:
