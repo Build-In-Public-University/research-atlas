@@ -17,23 +17,33 @@ A compressed entry must preserve what was observed, what was inferred, the curre
 
 ## Status
 
-The atlas imports public source-repository metadata, preserves source commit and tree SHAs, builds deterministic family pages, and validates catalog references. The first generated snapshot covers three source repositories; OpenAI/math remains a reference-only catalogue model.
+The atlas imports public source-repository metadata, preserves source commit and tree SHAs, checks indexed files against live default branches, builds generated family and review pages, and validates catalog references. The current generated snapshot covers 15 families, 24 claims, 27 artifacts, and 14 source manifests; OpenAI/math remains a reference-only catalogue model.
 
 ## Commands
 
 ```bash
 python3 tools/atlas.py import    # fetch public GitHub metadata and tree manifests
-python3 tools/atlas.py build     # build generated overview and family pages
+python3 tools/atlas.py drift    # compare indexed paths with live default branches
+python3 tools/atlas.py drift --check  # check for drift without writing state
+python3 tools/atlas.py review   # list unresolved review events
+python3 tools/atlas.py build     # build generated overview, family, digest, and review pages
 python3 tools/atlas.py validate  # validate catalog references and import receipts
-python3 tools/atlas.py all       # run all three stages
+python3 tools/atlas.py all       # run import, drift, build, and validation stages
+
+# Resolve a reviewed drift event without catalog mutation
+python3 tools/atlas.py resolve EVENT_ID \
+  --outcome no_catalog_change \
+  --resolution "Reviewed; no catalog update required."
 ```
 
 Import manifests record the source commit, tree SHA, branch, fetch time, and paths observed. They are receipts of repository state, not proof that the indexed claims are true.
 
 ## Layout
 
-- `catalog/` — families, claims, artifacts, releases, and corrections
+- `catalog/` — families, claims, artifacts, releases, corrections, extraction ledger, and review queue
 - `schemas/` — machine-readable record contracts
 - `sources/` — source repository manifest and import receipts
-- `generated/` — generated overview, source inventory, and family pages
-- `tools/` — future import and validation tools
+- `generated/` — generated overview, source inventory, release digest, review report, and family pages
+- `tools/` — import, drift, review, resolution, build, and validation tools
+
+The public review surface is [generated/review-report.md](generated/review-report.md). Scheduled drift checks run through [`.github/workflows/source-drift.yml`](.github/workflows/source-drift.yml); changed sources fail the run and upload the extraction ledger plus review queue as an artifact.

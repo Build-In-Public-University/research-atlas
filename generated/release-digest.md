@@ -1,6 +1,6 @@
 # Research Atlas Release Digest
 
-Generated: 2026-10-08T19:47:56Z
+Generated: 2026-10-08T20:05:50Z
 
 This is a release-candidate digest. It reports source state and editorial boundaries; it does not promote claims automatically.
 
