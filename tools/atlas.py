@@ -141,6 +141,11 @@ def review_event_id(row: dict) -> str:
     return sha256(material.encode("utf-8")).hexdigest()[:16]
 
 
+def target_in_diff(diff_text: str, target: str) -> bool:
+    """Require the target ID on an added or removed diff line, not context."""
+    return any(line[:1] in {"+", "-"} and not line.startswith(("+++", "---")) and target in line[1:] for line in diff_text.splitlines())
+
+
 def update_review_queue(output: list[dict], now: str, path: Path = REVIEW_QUEUE) -> list[dict]:
     """Merge current flags into the append-only review ledger."""
     prior_queue = {row["event_id"]: row for row in read_jsonl(path) if row.get("event_id")}
@@ -156,7 +161,7 @@ def update_review_queue(output: list[dict], now: str, path: Path = REVIEW_QUEUE)
         if event:
             event.update({**row, "last_seen": now, "last_observed_status": row["status"]})
         else:
-            queue.append({**row, "event_id": event_id, "first_seen": now, "last_seen": now, "last_observed_status": row["status"], "required_action": "inspect_source_and_update_claim", "resolved": False, "resolution": None, "resolution_outcome": None, "resolution_target": None, "catalog_commit": None, "changed_paths": []})
+            queue.append({**row, "event_id": event_id, "first_seen": now, "last_seen": now, "last_observed_status": row["status"], "required_action": "inspect_source_and_update_claim", "resolved": False, "resolution": None, "resolution_outcome": None, "resolution_target": None, "catalog_commit": None, "changed_paths": [], "target_seen_in_diff": None})
     for event in queue:
         if event.get("event_id") not in current_ids:
             event["last_observed_status"] = "not_currently_flagged"
@@ -344,7 +349,7 @@ def validate() -> None:
         if row["repository"] not in source_ids:
             raise ValueError(f"extraction references unknown repository {row['repository']}")
     for row in review_queue:
-        required = {"event_id", "repository", "source_path", "status", "first_seen", "last_seen", "last_observed_status", "required_action", "resolved", "resolution", "resolution_outcome", "resolution_target", "catalog_commit", "changed_paths"}
+        required = {"event_id", "repository", "source_path", "status", "first_seen", "last_seen", "last_observed_status", "required_action", "resolved", "resolution", "resolution_outcome", "resolution_target", "catalog_commit", "changed_paths", "target_seen_in_diff"}
         if not required <= row.keys():
             raise ValueError(f"review queue record missing {sorted(required - row.keys())}")
         if row["status"] not in REVIEW_STATUSES:
@@ -360,6 +365,8 @@ def validate() -> None:
                 raise ValueError(f"no_catalog_change event {row['event_id']} cannot have a target")
             if outcome in {"claim_update", "correction_record"} and (not row.get("catalog_commit") or not row.get("changed_paths")):
                 raise ValueError(f"resolved review event {row['event_id']} lacks a catalog commit receipt")
+            if outcome in {"claim_update", "correction_record"} and row.get("target_seen_in_diff") is not True:
+                raise ValueError(f"resolved review event {row['event_id']} lacks target diff evidence")
     for manifest_path in MANIFESTS.glob("*.json"):
         manifest = json.loads(manifest_path.read_text())
         if manifest.get("repository") not in source_ids:
@@ -401,10 +408,15 @@ def resolve_review(event_id: str, resolution: str, outcome: str, target: str | N
         try:
             subprocess.run(["git", "cat-file", "-e", f"{catalog_commit}^{{commit}}"], cwd=ROOT, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             committed_paths = subprocess.run(["git", "diff-tree", "--no-commit-id", "--name-only", "-r", catalog_commit], cwd=ROOT, check=True, capture_output=True, text=True).stdout.splitlines()
+            target_diff = subprocess.run(["git", "show", "--format=", "--unified=0", catalog_commit, "--", required_path], cwd=ROOT, check=True, capture_output=True, text=True).stdout
         except (subprocess.CalledProcessError, OSError) as exc:
             raise ValueError(f"catalog commit is not present locally: {catalog_commit}") from exc
         if required_path not in committed_paths:
             raise ValueError(f"catalog commit {catalog_commit} does not change {required_path}")
+        if not target:
+            raise ValueError(f"{outcome} requires a target")
+        if not target_in_diff(target_diff, target):
+            raise ValueError(f"catalog commit {catalog_commit} does not change target {target}")
     elif catalog_commit or changed_paths:
         raise ValueError("no_catalog_change cannot specify catalog commit or changed paths")
     rows = read_jsonl(REVIEW_QUEUE)
@@ -413,7 +425,7 @@ def resolve_review(event_id: str, resolution: str, outcome: str, target: str | N
             if row.get("resolved"):
                 raise ValueError(f"review event {event_id} is already resolved")
             now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-            row.update({"resolved": True, "resolution": resolution, "resolution_outcome": outcome, "resolution_target": target, "catalog_commit": catalog_commit, "changed_paths": changed_paths, "resolved_by": resolver, "resolved_at": now})
+            row.update({"resolved": True, "resolution": resolution, "resolution_outcome": outcome, "resolution_target": target, "catalog_commit": catalog_commit, "changed_paths": changed_paths, "target_seen_in_diff": bool(target), "resolved_by": resolver, "resolved_at": now})
             REVIEW_QUEUE.write_text("".join(json.dumps(item, sort_keys=True) + "\n" for item in rows))
             print(f"resolved review event {event_id}")
             return 0

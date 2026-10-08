@@ -30,6 +30,10 @@ class DriftClassificationTests(unittest.TestCase):
         prior = {"id": "existing"}
         self.assertEqual(atlas.classify_drift(prior, "c1", "h2", "c1", "h1"), "source_changed")
 
+    def test_target_diff_requires_added_or_removed_target_line(self):
+        self.assertTrue(atlas.target_in_diff("@@ -1 +1 @@\n-{\\\"id\\\":\\\"claim-1\\\"}\n+{\\\"id\\\":\\\"claim-1\\\",\\\"status\\\":\\\"updated\\\"}", "claim-1"))
+        self.assertFalse(atlas.target_in_diff("@@ -1 +1 @@\n {\\\"id\\\":\\\"claim-1\\\"}", "claim-1"))
+
     def test_review_event_persists_until_explicit_resolution(self):
         row = {"repository": "fixture/repo", "source_path": "REPORT.md", "baseline_commit": "c1", "current_commit": "c2", "status": "source_changed", "current_sha256": "h2", "baseline_sha256": "h1"}
         with tempfile.TemporaryDirectory() as directory:
