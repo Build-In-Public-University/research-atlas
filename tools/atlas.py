@@ -23,6 +23,7 @@ GENERATED = ROOT / "generated"
 EXTRACTIONS = CATALOG / "extractions.jsonl"
 REVIEW_QUEUE = CATALOG / "review-queue.jsonl"
 REVIEW_STATUSES = {"source_changed", "source_deleted", "fetch_error", "missing_manifest"}
+REVIEW_OUTCOMES = {"claim_update", "correction_record", "no_catalog_change"}
 
 
 def parse_source_manifest(path: Path = SOURCES) -> list[dict[str, str]]:
@@ -342,11 +343,13 @@ def validate() -> None:
         if row["repository"] not in source_ids:
             raise ValueError(f"extraction references unknown repository {row['repository']}")
     for row in review_queue:
-        required = {"event_id", "repository", "source_path", "status", "first_seen", "last_seen", "last_observed_status", "required_action", "resolved", "resolution"}
+        required = {"event_id", "repository", "source_path", "status", "first_seen", "last_seen", "last_observed_status", "required_action", "resolved", "resolution", "resolution_outcome"}
         if not required <= row.keys():
             raise ValueError(f"review queue record missing {sorted(required - row.keys())}")
         if row["status"] not in REVIEW_STATUSES:
             raise ValueError(f"review queue contains non-review status {row['status']}")
+        if row["resolved"] and (row.get("resolution_outcome") not in REVIEW_OUTCOMES or not row.get("resolution")):
+            raise ValueError(f"resolved review event {row['event_id']} lacks a valid resolution outcome")
     for manifest_path in MANIFESTS.glob("*.json"):
         manifest = json.loads(manifest_path.read_text())
         if manifest.get("repository") not in source_ids:
@@ -366,14 +369,16 @@ def review_list() -> int:
     return 0
 
 
-def resolve_review(event_id: str, resolution: str, resolver: str) -> int:
+def resolve_review(event_id: str, resolution: str, outcome: str, resolver: str) -> int:
+    if outcome not in REVIEW_OUTCOMES:
+        raise ValueError(f"invalid review outcome {outcome}; choose one of {sorted(REVIEW_OUTCOMES)}")
     rows = read_jsonl(REVIEW_QUEUE)
     for row in rows:
         if row.get("event_id") == event_id:
             if row.get("resolved"):
                 raise ValueError(f"review event {event_id} is already resolved")
             now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-            row.update({"resolved": True, "resolution": resolution, "resolved_by": resolver, "resolved_at": now})
+            row.update({"resolved": True, "resolution": resolution, "resolution_outcome": outcome, "resolved_by": resolver, "resolved_at": now})
             REVIEW_QUEUE.write_text("".join(json.dumps(item, sort_keys=True) + "\n" for item in rows))
             print(f"resolved review event {event_id}")
             return 0
@@ -386,6 +391,7 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="for drift, report changes without writing the extraction ledger")
     parser.add_argument("event_id", nargs="?", help="review event ID for resolve")
     parser.add_argument("--resolution", help="resolution explanation for resolve")
+    parser.add_argument("--outcome", choices=sorted(REVIEW_OUTCOMES), help="required catalog consequence for resolve")
     parser.add_argument("--resolver", default=os.environ.get("USER", "unknown"), help="resolver identity for resolve")
     args = parser.parse_args()
     if args.command in ("import", "all"):
@@ -397,9 +403,9 @@ def main() -> int:
     if args.command == "review":
         return review_list()
     if args.command == "resolve":
-        if not args.event_id or not args.resolution:
-            parser.error("resolve requires EVENT_ID and --resolution")
-        return resolve_review(args.event_id, args.resolution, args.resolver)
+        if not args.event_id or not args.resolution or not args.outcome:
+            parser.error("resolve requires EVENT_ID, --resolution, and --outcome")
+        return resolve_review(args.event_id, args.resolution, args.outcome, args.resolver)
     if args.command in ("build", "all"):
         build_views()
     if args.command in ("validate", "all"):
