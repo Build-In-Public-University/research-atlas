@@ -134,6 +134,11 @@ def classify_drift(previous: dict | None, current_commit: str, current_sha: str,
     return "source_changed"
 
 
+def review_event_id(row: dict) -> str:
+    material = "|".join(str(row.get(key, "")) for key in ("repository", "source_path", "baseline_commit", "current_commit"))
+    return sha256(material.encode("utf-8")).hexdigest()[:16]
+
+
 def drift_check(check_only: bool = False) -> int:
     """Compare indexed paths at the live default branch with the recorded baseline."""
     manifests = {json.loads(path.read_text())["repository"]: json.loads(path.read_text()) for path in MANIFESTS.glob("*.json")}
@@ -176,10 +181,21 @@ def drift_check(check_only: bool = False) -> int:
         output.append(item)
     if not check_only:
         EXTRACTIONS.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in output))
-        queue = []
+        prior_queue = {row["event_id"]: row for row in read_jsonl(REVIEW_QUEUE) if row.get("event_id")}
+        queue = list(prior_queue.values())
+        queue_by_id = {row["event_id"]: row for row in queue}
         for row in output:
             if row.get("status") in REVIEW_STATUSES:
-                queue.append({**row, "required_action": "inspect_source_and_update_claim", "resolved": False})
+                event_id = review_event_id(row)
+                event = queue_by_id.get(event_id)
+                if event:
+                    event.update({**row, "last_seen": now, "last_observed_status": row["status"]})
+                else:
+                    event = {**row, "event_id": event_id, "first_seen": now, "last_seen": now, "last_observed_status": row["status"], "required_action": "inspect_source_and_update_claim", "resolved": False, "resolution": None}
+                    queue.append(event)
+        for event in queue:
+            if event.get("event_id") in queue_by_id and not any(review_event_id(row) == event.get("event_id") for row in output if row.get("status") in REVIEW_STATUSES):
+                event["last_observed_status"] = "not_currently_flagged"
         REVIEW_QUEUE.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in queue))
     statuses = ("baseline", "unchanged", "repository_advanced_source_unchanged", "source_changed", "source_deleted", "fetch_error", "missing_manifest")
     counts = {status: sum(row.get("status") == status for row in output) for status in statuses}
@@ -318,7 +334,7 @@ def validate() -> None:
         if row["repository"] not in source_ids:
             raise ValueError(f"extraction references unknown repository {row['repository']}")
     for row in review_queue:
-        required = {"repository", "source_path", "status", "required_action", "resolved"}
+        required = {"event_id", "repository", "source_path", "status", "first_seen", "last_seen", "last_observed_status", "required_action", "resolved", "resolution"}
         if not required <= row.keys():
             raise ValueError(f"review queue record missing {sorted(required - row.keys())}")
         if row["status"] not in REVIEW_STATUSES:
@@ -333,10 +349,36 @@ def validate() -> None:
     print(f"validation: PASS ({len(families)} families, {len(claims)} claims, {len(artifacts)} artifacts, {len(list(MANIFESTS.glob('*.json')))} manifests)")
 
 
+def review_list() -> int:
+    rows = read_jsonl(REVIEW_QUEUE)
+    unresolved = [row for row in rows if not row.get("resolved", False)]
+    for row in unresolved:
+        print(f"{row['event_id']} {row['repository']}:{row['source_path']} {row.get('status')} last={row.get('last_observed_status')}")
+    print(f"review queue: {len(unresolved)} unresolved / {len(rows)} total")
+    return 0
+
+
+def resolve_review(event_id: str, resolution: str, resolver: str) -> int:
+    rows = read_jsonl(REVIEW_QUEUE)
+    for row in rows:
+        if row.get("event_id") == event_id:
+            if row.get("resolved"):
+                raise ValueError(f"review event {event_id} is already resolved")
+            now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+            row.update({"resolved": True, "resolution": resolution, "resolved_by": resolver, "resolved_at": now})
+            REVIEW_QUEUE.write_text("".join(json.dumps(item, sort_keys=True) + "\n" for item in rows))
+            print(f"resolved review event {event_id}")
+            return 0
+    raise ValueError(f"unknown review event {event_id}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("command", choices=("import", "drift", "build", "validate", "all"))
+    parser.add_argument("command", choices=("import", "drift", "review", "resolve", "build", "validate", "all"))
     parser.add_argument("--check", action="store_true", help="for drift, report changes without writing the extraction ledger")
+    parser.add_argument("event_id", nargs="?", help="review event ID for resolve")
+    parser.add_argument("--resolution", help="resolution explanation for resolve")
+    parser.add_argument("--resolver", default=os.environ.get("USER", "unknown"), help="resolver identity for resolve")
     args = parser.parse_args()
     if args.command in ("import", "all"):
         import_repositories()
@@ -344,6 +386,12 @@ def main() -> int:
         result = drift_check(check_only=args.check)
         if args.check and result == 2:
             return 2
+    if args.command == "review":
+        return review_list()
+    if args.command == "resolve":
+        if not args.event_id or not args.resolution:
+            parser.error("resolve requires EVENT_ID and --resolution")
+        return resolve_review(args.event_id, args.resolution, args.resolver)
     if args.command in ("build", "all"):
         build_views()
     if args.command in ("validate", "all"):
