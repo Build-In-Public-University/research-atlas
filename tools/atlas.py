@@ -121,6 +121,17 @@ def source_repo_id(source_url: str) -> str:
     return f"{parts[0]}/{parts[1]}"
 
 
+def classify_drift(previous: dict | None, current_commit: str, current_sha: str, baseline_commit: str | None, baseline_sha: str | None) -> str:
+    """Classify current source state against the first recorded baseline."""
+    if not previous:
+        return "baseline"
+    if current_commit == baseline_commit and current_sha == baseline_sha:
+        return "unchanged"
+    if current_sha == baseline_sha:
+        return "repository_advanced_source_unchanged"
+    return "source_changed"
+
+
 def drift_check(check_only: bool = False) -> int:
     """Compare indexed paths at the live default branch with the recorded baseline."""
     manifests = {json.loads(path.read_text())["repository"]: json.loads(path.read_text()) for path in MANIFESTS.glob("*.json")}
@@ -154,14 +165,7 @@ def drift_check(check_only: bool = False) -> int:
                 prior = previous.get(key, {})
                 baseline_commit = prior.get("baseline_commit", prior.get("source_commit", manifest["source_commit"]))
                 baseline_sha = prior.get("baseline_sha256", prior.get("sha256"))
-                if not prior:
-                    status = "baseline"
-                elif current_commit == baseline_commit and current_sha == baseline_sha:
-                    status = "unchanged"
-                elif current_sha == baseline_sha:
-                    status = "repository_advanced_source_unchanged"
-                else:
-                    status = "source_changed"
+                status = classify_drift(prior, current_commit, current_sha, baseline_commit, baseline_sha)
                 item.update({"baseline_commit": baseline_commit, "baseline_sha256": baseline_sha, "current_commit": current_commit, "current_sha256": current_sha, "bytes": len(content), "status": status, "observed_at": now})
             except FileNotFoundError:
                 item.update({"baseline_commit": manifest["source_commit"], "status": "source_deleted", "observed_at": now})
