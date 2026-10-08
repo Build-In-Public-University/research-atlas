@@ -21,6 +21,8 @@ MANIFESTS = ROOT / "sources/import-manifests"
 CATALOG = ROOT / "catalog"
 GENERATED = ROOT / "generated"
 EXTRACTIONS = CATALOG / "extractions.jsonl"
+REVIEW_QUEUE = CATALOG / "review-queue.jsonl"
+REVIEW_STATUSES = {"source_changed", "source_deleted", "fetch_error", "missing_manifest"}
 
 
 def parse_source_manifest(path: Path = SOURCES) -> list[dict[str, str]]:
@@ -174,6 +176,11 @@ def drift_check(check_only: bool = False) -> int:
         output.append(item)
     if not check_only:
         EXTRACTIONS.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in output))
+        queue = []
+        for row in output:
+            if row.get("status") in REVIEW_STATUSES:
+                queue.append({**row, "required_action": "inspect_source_and_update_claim", "resolved": False})
+        REVIEW_QUEUE.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in queue))
     statuses = ("baseline", "unchanged", "repository_advanced_source_unchanged", "source_changed", "source_deleted", "fetch_error", "missing_manifest")
     counts = {status: sum(row.get("status") == status for row in output) for status in statuses}
     print(f"drift: {len(output)} extracted sources; " + ", ".join(f"{key}={value}" for key, value in counts.items() if value))
@@ -284,6 +291,7 @@ def validate() -> None:
     artifacts = read_jsonl(CATALOG / "artifacts.jsonl")
     surfaces = read_jsonl(CATALOG / "repository-surfaces.jsonl")
     extractions = read_jsonl(EXTRACTIONS)
+    review_queue = read_jsonl(REVIEW_QUEUE)
     for row in claims:
         required = {"id", "family", "type", "status", "source", "evidence_boundary"}
         missing = required - row.keys()
@@ -309,6 +317,12 @@ def validate() -> None:
             raise ValueError(f"extraction {row.get('repository', '?')}:{row.get('source_path', '?')} missing {sorted(required - row.keys())}")
         if row["repository"] not in source_ids:
             raise ValueError(f"extraction references unknown repository {row['repository']}")
+    for row in review_queue:
+        required = {"repository", "source_path", "status", "required_action", "resolved"}
+        if not required <= row.keys():
+            raise ValueError(f"review queue record missing {sorted(required - row.keys())}")
+        if row["status"] not in REVIEW_STATUSES:
+            raise ValueError(f"review queue contains non-review status {row['status']}")
     for manifest_path in MANIFESTS.glob("*.json"):
         manifest = json.loads(manifest_path.read_text())
         if manifest.get("repository") not in source_ids:

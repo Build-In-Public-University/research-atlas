@@ -41,6 +41,7 @@ jobs:
           name: source-drift-${{ github.run_id }}
           path: |
             catalog/extractions.jsonl
+            catalog/review-queue.jsonl
             drift-report.md
       - name: Fail when review is required
         if: steps.report.outcome == 'failure'
