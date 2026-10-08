@@ -16,5 +16,32 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
-      - name: Check indexed source files
-        run: python3 tools/atlas.py drift --check
+      - name: Scan indexed source files
+        run: python3 tools/atlas.py drift
+      - name: Write changed-source report
+        id: report
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          rows = [json.loads(line) for line in Path('catalog/extractions.jsonl').read_text().splitlines() if line.strip()]
+          changed = [row for row in rows if row.get('status') in {'source_changed', 'source_deleted', 'fetch_error', 'missing_manifest'}]
+          lines = ['# Source drift report', '', f'Changed or unresolved sources: {len(changed)}', '']
+          for row in changed:
+              lines.append(f"- {row['repository']}:{row['source_path']} — {row['status']}")
+          Path('drift-report.md').write_text('\n'.join(lines) + '\n')
+          print(f'changed={len(changed)}')
+          if changed:
+              raise SystemExit(2)
+          PY
+        continue-on-error: true
+      - name: Upload drift ledger and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-drift-${{ github.run_id }}
+          path: |
+            catalog/extractions.jsonl
+            drift-report.md
+      - name: Fail when review is required
+        if: steps.report.outcome == 'failure'
+        run: exit 1

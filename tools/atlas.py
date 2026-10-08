@@ -122,7 +122,7 @@ def source_repo_id(source_url: str) -> str:
 
 
 def drift_check(check_only: bool = False) -> int:
-    """Fetch exact source paths at imported commits and classify source drift."""
+    """Compare indexed paths at the live default branch with the recorded baseline."""
     manifests = {json.loads(path.read_text())["repository"]: json.loads(path.read_text()) for path in MANIFESTS.glob("*.json")}
     records = read_jsonl(EXTRACTIONS)
     previous = {(row["repository"], row["source_path"]): row for row in records}
@@ -133,6 +133,7 @@ def drift_check(check_only: bool = False) -> int:
                 repo = source_repo_id(row["source"])
                 candidates[(repo, row["source_path"])] = {"repository": repo, "source_path": row["source_path"], "source_url": row["source"]}
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    live_commits = {}
     output = []
     for key in sorted(candidates):
         item = candidates[key]
@@ -140,25 +141,39 @@ def drift_check(check_only: bool = False) -> int:
         if not manifest:
             item.update({"status": "missing_manifest", "observed_at": now})
         else:
-            commit = manifest["source_commit"]
-            owner, repo = item["repository"].split("/", 1)
-            raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{commit}/{quote(item['source_path'], safe='/') }"
             try:
+                branch = manifest.get("default_branch", "main")
+                if item["repository"] not in live_commits:
+                    live = github_json(f"https://api.github.com/repos/{item['repository']}/commits/{quote(branch, safe='')}")
+                    live_commits[item["repository"]] = live["sha"]
+                current_commit = live_commits[item["repository"]]
+                owner, repo = item["repository"].split("/", 1)
+                raw_url = f"https://raw.githubusercontent.com/{owner}/{repo}/{current_commit}/{quote(item['source_path'], safe='/')}"
                 content = raw_text(raw_url).encode("utf-8")
-                digest = sha256(content).hexdigest()
+                current_sha = sha256(content).hexdigest()
                 prior = previous.get(key, {})
-                status = "baseline" if not prior else ("unchanged" if prior.get("sha256") == digest else "changed")
-                item.update({"source_commit": commit, "sha256": digest, "bytes": len(content), "status": status, "observed_at": now})
+                baseline_commit = prior.get("baseline_commit", prior.get("source_commit", manifest["source_commit"]))
+                baseline_sha = prior.get("baseline_sha256", prior.get("sha256"))
+                if not prior:
+                    status = "baseline"
+                elif current_commit == baseline_commit and current_sha == baseline_sha:
+                    status = "unchanged"
+                elif current_sha == baseline_sha:
+                    status = "repository_advanced_source_unchanged"
+                else:
+                    status = "source_changed"
+                item.update({"baseline_commit": baseline_commit, "baseline_sha256": baseline_sha, "current_commit": current_commit, "current_sha256": current_sha, "bytes": len(content), "status": status, "observed_at": now})
             except FileNotFoundError:
-                item.update({"source_commit": commit, "status": "source_deleted", "observed_at": now})
-            except RuntimeError as exc:
-                item.update({"source_commit": commit, "status": "fetch_error", "error": str(exc), "observed_at": now})
+                item.update({"baseline_commit": manifest["source_commit"], "status": "source_deleted", "observed_at": now})
+            except (RuntimeError, KeyError) as exc:
+                item.update({"baseline_commit": manifest["source_commit"], "status": "fetch_error", "error": str(exc), "observed_at": now})
         output.append(item)
     if not check_only:
         EXTRACTIONS.write_text("".join(json.dumps(row, sort_keys=True) + "\n" for row in output))
-    counts = {status: sum(row.get("status") == status for row in output) for status in ("baseline", "unchanged", "changed", "source_deleted", "fetch_error", "missing_manifest")}
+    statuses = ("baseline", "unchanged", "repository_advanced_source_unchanged", "source_changed", "source_deleted", "fetch_error", "missing_manifest")
+    counts = {status: sum(row.get("status") == status for row in output) for status in statuses}
     print(f"drift: {len(output)} extracted sources; " + ", ".join(f"{key}={value}" for key, value in counts.items() if value))
-    if check_only and any(row.get("status") in {"changed", "source_deleted", "fetch_error", "missing_manifest"} for row in output):
+    if check_only and any(row.get("status") in {"source_changed", "source_deleted", "fetch_error", "missing_manifest"} for row in output):
         return 2
     return len(output)
 
@@ -240,7 +255,7 @@ def build_views() -> None:
     digest_lines = ["# Research Atlas Release Digest", "", f"Generated: {datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')}", "", "This is a release-candidate digest. It reports source state and editorial boundaries; it does not promote claims automatically.", "", "## Source extraction state", ""]
     if extractions:
         for row in extractions:
-            digest_lines.append(f"- `{row['repository']}:{row['source_path']}` — `{row.get('status', 'unknown')}` at `{row.get('source_commit', 'unknown')[:12]}`")
+            digest_lines.append(f"- `{row['repository']}:{row['source_path']}` — `{row.get('status', 'unknown')}`; baseline `{row.get('baseline_commit', 'unknown')[:12]}`, current `{row.get('current_commit', 'unknown')[:12]}`")
     else:
         digest_lines.append("No source extractions recorded yet. Run `python3 tools/atlas.py drift`.")
     digest_lines += ["", "## Corrections and preserved boundaries", ""]
