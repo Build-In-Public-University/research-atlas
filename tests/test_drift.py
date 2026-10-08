@@ -47,7 +47,7 @@ class DriftClassificationTests(unittest.TestCase):
             original_path = atlas.REVIEW_QUEUE
             atlas.REVIEW_QUEUE = queue_path
             try:
-                atlas.resolve_review(event_id, "Reviewed source change; no claim update required.", "no_catalog_change", "fixture-reviewer")
+                atlas.resolve_review(event_id, "Reviewed source change; no claim update required.", "no_catalog_change", None, "fixture-reviewer")
             finally:
                 atlas.REVIEW_QUEUE = original_path
             resolved = json.loads(queue_path.read_text().splitlines()[0])
